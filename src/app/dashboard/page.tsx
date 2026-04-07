@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Users, Stamp, Gift, TrendingUp, ArrowRight, AlertCircle } from 'lucide-react'
+import { Users, Stamp, Gift, TrendingUp, ArrowRight, AlertCircle, Link2 } from 'lucide-react'
+import CopyLinkButton from '@/components/CopyLinkButton'
 
 export default async function DashboardPage() {
   const supabase = createClient()
@@ -52,6 +53,8 @@ export default async function DashboardPage() {
     .select('id', { count: 'exact' })
     .eq('business_id', business.id)
     .gte('created_at', weekAgo.toISOString())
+
+  const joinUrl = `${process.env.NEXT_PUBLIC_APP_URL}/card/${business.id}`
 
   const stats = [
     { label: 'Total customers', value: totalCustomers, icon: Users, color: 'bg-blue-50 text-blue-600' },
@@ -111,6 +114,20 @@ export default async function DashboardPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Customer join link */}
+      <div className="bg-white rounded-2xl border border-gray-100 px-6 py-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Link2 className="w-4 h-4 text-indigo-600" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-gray-900">Customer join link</div>
+            <div className="text-xs text-gray-400 truncate">{joinUrl}</div>
+          </div>
+        </div>
+        <CopyLinkButton url={joinUrl} />
       </div>
 
       {/* Recent stamps */}

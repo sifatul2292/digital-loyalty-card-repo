@@ -106,9 +106,11 @@ export default function StampPage() {
 
     const newCount = customer.stampCount + 1
     if (newCount % business.reward_threshold === 0) {
+      const redemptionCode = Math.floor(100000 + Math.random() * 900000).toString()
       await supabase.from('rewards').insert({
         customer_id: customer.id,
         business_id: business.id,
+        redemption_code: redemptionCode,
       })
     }
 

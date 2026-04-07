@@ -34,7 +34,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
       .order('created_at', { ascending: false }),
     supabase
       .from('rewards')
-      .select('id, redeemed, redeemed_at, created_at')
+      .select('id, redeemed, redeemed_at, redemption_code, created_at')
       .eq('customer_id', customer.id)
       .order('created_at', { ascending: false }),
   ])
@@ -44,7 +44,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
   const currentProgress = stamps.length % business.reward_threshold
   const progressPct = currentProgress / business.reward_threshold * 100
 
-  const cardUrl = `${process.env.NEXT_PUBLIC_APP_URL}/card/${customer.card_token}`
+  const cardUrl = `${process.env.NEXT_PUBLIC_APP_URL}/mycard/${customer.card_token}`
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -131,17 +131,22 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
           <div className="px-6 py-8 text-center text-gray-400 text-sm">No rewards yet</div>
         ) : (
           <ul className="divide-y divide-gray-50">
-            {rewards.map((r) => (
-              <li key={r.id} className="px-6 py-4 flex items-center justify-between">
-                <div>
+            {(rewards as (typeof rewards[number] & { redemption_code?: string | null })[]).map((r) => (
+              <li key={r.id} className="px-6 py-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <div className="text-sm font-medium text-gray-900">{business.reward_name}</div>
                   <div className="text-xs text-gray-400 mt-0.5">
                     Earned {new Date(r.created_at).toLocaleDateString()}
                     {r.redeemed && r.redeemed_at && ` · Redeemed ${new Date(r.redeemed_at).toLocaleDateString()}`}
                   </div>
+                  {!r.redeemed && r.redemption_code && (
+                    <div className="mt-1 inline-flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-mono font-bold px-2 py-0.5 rounded">
+                      Code: {r.redemption_code}
+                    </div>
+                  )}
                 </div>
                 {r.redeemed ? (
-                  <span className="text-xs bg-gray-100 text-gray-400 px-3 py-1 rounded-full font-medium">Redeemed</span>
+                  <span className="text-xs bg-gray-100 text-gray-400 px-3 py-1 rounded-full font-medium flex-shrink-0">Redeemed</span>
                 ) : (
                   <RedeemButton rewardId={r.id} />
                 )}

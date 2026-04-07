@@ -7,6 +7,7 @@ type RewardRow = {
   id: string
   redeemed: boolean
   redeemed_at: string | null
+  redemption_code: string | null
   created_at: string
   customers: { id: string; name: string; phone: string } | null
 }
@@ -26,7 +27,7 @@ export default async function RewardsPage() {
 
   const { data: rewards } = await supabase
     .from('rewards')
-    .select('id, redeemed, redeemed_at, created_at, customers(id, name, phone)')
+    .select('id, redeemed, redeemed_at, redemption_code, created_at, customers(id, name, phone)')
     .eq('business_id', business.id)
     .order('created_at', { ascending: false })
 
@@ -71,6 +72,11 @@ export default async function RewardsPage() {
                     <div className="text-right">
                       <div className="text-sm font-medium text-gray-900">{business.reward_name}</div>
                       <div className="text-xs text-gray-400">Earned {new Date(r.created_at).toLocaleDateString()}</div>
+                      {r.redemption_code && (
+                        <div className="mt-1 font-mono text-sm font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded text-right">
+                          {r.redemption_code}
+                        </div>
+                      )}
                     </div>
                     <Link
                       href={`/dashboard/customers/${r.customers?.id}`}
