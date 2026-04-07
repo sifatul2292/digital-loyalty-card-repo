@@ -54,7 +54,9 @@ export default async function DashboardPage() {
     .eq('business_id', business.id)
     .gte('created_at', weekAgo.toISOString())
 
-  const joinUrl = `${process.env.NEXT_PUBLIC_APP_URL}/card/${business.id}`
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  const joinUrl = `${appUrl}/card/${business.id}`
 
   const stats = [
     { label: 'Total customers', value: totalCustomers, icon: Users, color: 'bg-blue-50 text-blue-600' },
