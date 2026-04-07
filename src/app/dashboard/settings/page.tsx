@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Settings, Loader2, CheckCircle } from 'lucide-react'
+import { Settings, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import type { Business } from '@/lib/supabase/types'
 
 const BUSINESS_TYPES = [
@@ -12,66 +12,111 @@ const BUSINESS_TYPES = [
 
 export default function SettingsPage() {
   const [business, setBusiness] = useState<Business | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
 
   const [name, setName] = useState('')
-  const [type, setType] = useState('')
+  const [type, setType] = useState('Cafe')
   const [threshold, setThreshold] = useState(10)
-  const [rewardName, setRewardName] = useState('')
+  const [rewardName, setRewardName] = useState('Free Item')
   const [winBack, setWinBack] = useState(false)
 
   useEffect(() => {
     async function load() {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      try {
+        const supabase = createClient()
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+          setLoadError('Not authenticated. Please sign in again.')
+          setLoading(false)
+          return
+        }
+        setUserId(user.id)
 
-      const { data } = await supabase
-        .from('businesses')
-        .select('*')
-        .eq('owner_id', user.id)
-        .single()
+        const { data, error: bizError } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('owner_id', user.id)
+          .single()
 
-      if (data) {
-        setBusiness(data as Business)
-        setName((data as Business).name)
-        setType((data as Business).type)
-        setThreshold((data as Business).reward_threshold)
-        setRewardName((data as Business).reward_name)
-        setWinBack((data as Business).win_back_enabled)
+        if (bizError && bizError.code !== 'PGRST116') {
+          // PGRST116 = no rows found, which is fine
+          setLoadError(bizError.message)
+        } else if (data) {
+          const biz = data as Business
+          setBusiness(biz)
+          setName(biz.name)
+          setType(biz.type)
+          setThreshold(biz.reward_threshold)
+          setRewardName(biz.reward_name)
+          setWinBack(biz.win_back_enabled)
+        }
+      } catch (e) {
+        setLoadError('Failed to load business data.')
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
     load()
   }, [])
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!business) return
     setSaving(true)
     setError('')
 
     const supabase = createClient()
-    const { error: updateError } = await supabase
-      .from('businesses')
-      .update({
-        name,
-        type,
-        reward_threshold: threshold,
-        reward_name: rewardName,
-        win_back_enabled: winBack,
-      })
-      .eq('id', business.id)
 
-    if (updateError) {
-      setError(updateError.message)
+    if (business) {
+      // Update existing business
+      const { error: updateError } = await supabase
+        .from('businesses')
+        .update({
+          name,
+          type,
+          reward_threshold: threshold,
+          reward_name: rewardName,
+          win_back_enabled: winBack,
+        })
+        .eq('id', business.id)
+        .eq('owner_id', business.owner_id)
+
+      if (updateError) {
+        setError(updateError.message)
+      } else {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2500)
+      }
+    } else if (userId) {
+      // Create business if it doesn't exist yet (e.g. email confirmation flow)
+      const { data, error: insertError } = await supabase
+        .from('businesses')
+        .insert({
+          name,
+          type,
+          reward_threshold: threshold,
+          reward_name: rewardName,
+          win_back_enabled: winBack,
+          owner_id: userId,
+        })
+        .select()
+        .single()
+
+      if (insertError) {
+        setError(insertError.message)
+      } else {
+        setBusiness(data as Business)
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2500)
+      }
     } else {
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2500)
+      setError('Not authenticated. Please refresh and try again.')
     }
+
     setSaving(false)
   }
 
@@ -90,6 +135,19 @@ export default function SettingsPage() {
         <p className="text-gray-500 text-sm mt-1">Manage your business profile and loyalty program</p>
       </div>
 
+      {loadError && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {loadError}
+        </div>
+      )}
+
+      {!business && !loadError && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl text-sm">
+          No business profile found. Fill in the details below to create one.
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl border border-gray-100 p-6">
         <form onSubmit={handleSave} className="space-y-5">
           <h2 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -105,6 +163,7 @@ export default function SettingsPage() {
               onChange={(e) => setName(e.target.value)}
               required
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              placeholder="Brew & Co."
             />
           </div>
 
@@ -143,6 +202,7 @@ export default function SettingsPage() {
                 onChange={(e) => setRewardName(e.target.value)}
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="Free Coffee"
               />
             </div>
           </div>
@@ -168,12 +228,15 @@ export default function SettingsPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{error}</p>
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {error}
+            </div>
           )}
 
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || !!loadError}
             className={`w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
               saved
                 ? 'bg-green-500 text-white'
@@ -185,7 +248,7 @@ export default function SettingsPage() {
             ) : saved ? (
               <><CheckCircle className="w-4 h-4" /> Saved!</>
             ) : (
-              'Save changes'
+              business ? 'Save changes' : 'Create business'
             )}
           </button>
         </form>
