@@ -55,7 +55,7 @@ export default function SettingsPage() {
           setRewardName(biz.reward_name)
           setWinBack(biz.win_back_enabled)
         }
-      } catch (e) {
+      } catch {
         setLoadError('Failed to load business data.')
       } finally {
         setLoading(false)
