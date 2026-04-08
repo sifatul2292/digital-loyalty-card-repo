@@ -12,6 +12,7 @@ export interface Database {
           reward_threshold: number
           reward_name: string
           win_back_enabled: boolean
+          staff_pin: string | null
           owner_id: string
           created_at: string
         }
@@ -71,6 +72,7 @@ export interface Database {
           business_id: string
           redeemed: boolean
           redeemed_at: string | null
+          redemption_code: string | null
           created_at: string
         }
         Insert: {

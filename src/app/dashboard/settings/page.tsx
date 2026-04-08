@@ -24,6 +24,7 @@ export default function SettingsPage() {
   const [threshold, setThreshold] = useState(10)
   const [rewardName, setRewardName] = useState('Free Item')
   const [winBack, setWinBack] = useState(false)
+  const [staffPin, setStaffPin] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -54,6 +55,7 @@ export default function SettingsPage() {
           setThreshold(biz.reward_threshold)
           setRewardName(biz.reward_name)
           setWinBack(biz.win_back_enabled)
+          setStaffPin((biz as Business & { staff_pin: string | null }).staff_pin ?? '')
         }
       } catch {
         setLoadError('Failed to load business data.')
@@ -81,6 +83,7 @@ export default function SettingsPage() {
           reward_threshold: threshold,
           reward_name: rewardName,
           win_back_enabled: winBack,
+          ...(staffPin.length === 4 ? { staff_pin: staffPin } : {}),
         })
         .eq('id', business.id)
         .eq('owner_id', business.owner_id)
@@ -102,6 +105,7 @@ export default function SettingsPage() {
           reward_name: rewardName,
           win_back_enabled: winBack,
           owner_id: userId,
+          ...(staffPin.length === 4 ? { staff_pin: staffPin } : {}),
         })
         .select()
         .single()
@@ -206,6 +210,31 @@ export default function SettingsPage() {
               />
             </div>
           </div>
+
+          <hr className="border-gray-100" />
+          <h2 className="font-semibold text-gray-900">Staff terminal</h2>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Staff PIN <span className="text-gray-400 font-normal">(4 digits)</span>
+            </label>
+            <input
+              type="password"
+              inputMode="numeric"
+              value={staffPin}
+              onChange={(e) => setStaffPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              placeholder="e.g. 1234"
+              maxLength={4}
+              className="w-40 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent tracking-[0.3em] font-mono"
+            />
+            <p className="text-xs text-gray-400 mt-1.5">
+              Used to protect the staff counter page at{' '}
+              <span className="font-mono text-gray-500">/stamp/[businessId]</span>
+            </p>
+          </div>
+
+          <hr className="border-gray-100" />
+          <h2 className="font-semibold text-gray-900">Notifications</h2>
 
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
             <div>
