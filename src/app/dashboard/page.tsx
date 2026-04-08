@@ -11,7 +11,7 @@ export default async function DashboardPage() {
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('*')
+    .select('id, name, type, reward_threshold, reward_name, win_back_enabled')
     .eq('owner_id', user.id)
     .single()
 
@@ -28,31 +28,27 @@ export default async function DashboardPage() {
     )
   }
 
-  const [customersRes, stampsRes, rewardsRes, recentStampsRes] = await Promise.all([
-    supabase.from('customers').select('id', { count: 'exact' }).eq('business_id', business.id),
-    supabase.from('stamps').select('id', { count: 'exact' }).eq('business_id', business.id),
-    supabase.from('rewards').select('id', { count: 'exact' }).eq('business_id', business.id).eq('redeemed', false),
+  const weekAgo = new Date()
+  weekAgo.setDate(weekAgo.getDate() - 7)
+
+  const [customersRes, stampsRes, rewardsRes, recentStampsRes, weeklyStampsRes] = await Promise.all([
+    supabase.from('customers').select('id', { count: 'exact', head: true }).eq('business_id', business.id),
+    supabase.from('stamps').select('id', { count: 'exact', head: true }).eq('business_id', business.id),
+    supabase.from('rewards').select('id', { count: 'exact', head: true }).eq('business_id', business.id).eq('redeemed', false),
     supabase
       .from('stamps')
       .select('id, created_at, customers(name, phone)')
       .eq('business_id', business.id)
       .order('created_at', { ascending: false })
       .limit(8),
+    supabase.from('stamps').select('id', { count: 'exact', head: true }).eq('business_id', business.id).gte('created_at', weekAgo.toISOString()),
   ])
 
   const totalCustomers = customersRes.count ?? 0
   const totalStamps = stampsRes.count ?? 0
   const pendingRewards = rewardsRes.count ?? 0
   const recentStamps = recentStampsRes.data ?? []
-
-  // Stamps this week
-  const weekAgo = new Date()
-  weekAgo.setDate(weekAgo.getDate() - 7)
-  const { count: weeklyStamps } = await supabase
-    .from('stamps')
-    .select('id', { count: 'exact' })
-    .eq('business_id', business.id)
-    .gte('created_at', weekAgo.toISOString())
+  const weeklyStamps = weeklyStampsRes.count ?? 0
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
@@ -62,7 +58,7 @@ export default async function DashboardPage() {
     { label: 'Total customers', value: totalCustomers, icon: Users, color: 'bg-blue-50 text-blue-600' },
     { label: 'Total stamps given', value: totalStamps, icon: Stamp, color: 'bg-indigo-50 text-indigo-600' },
     { label: 'Rewards pending', value: pendingRewards, icon: Gift, color: 'bg-amber-50 text-amber-600' },
-    { label: 'Stamps this week', value: weeklyStamps ?? 0, icon: TrendingUp, color: 'bg-green-50 text-green-600' },
+    { label: 'Stamps this week', value: weeklyStamps, icon: TrendingUp, color: 'bg-green-50 text-green-600' },
   ]
 
   return (
